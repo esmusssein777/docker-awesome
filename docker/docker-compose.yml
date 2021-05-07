@@ -1,0 +1,113 @@
+version: '2.2'
+services:
+  # 指定服务名称
+  db:
+    # 指定服务使用的镜像
+    image: mysql:5.7
+    # 指定容器名称
+    container_name: dockerDB
+    # 指定服务运行的端口
+    ports:
+      - 13306:3306
+    # 指定容器中需要挂载的文件
+    volumes:
+      - "./conf/my.cnf:/etc/my.cnf"
+      - "./init:/docker-entrypoint-initdb.d/"
+    # 指定容器的环境变量
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+  # 指定服务名称
+  docker:
+    # 指定服务使用的镜像
+    image: esmusssein777/docker-awesome:3.0-SNAPSHOT
+    # 指定容器名称
+    container_name: docker-awesome
+    # 指定服务运行的端口
+    ports:
+      - 8080:8080
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/docker?characterEncoding=UTF-8&connectionCollation=utf8mb4_bin
+      LOGSTASH_HOST: logstash:4560
+    depends_on:
+      - db
+      - logstash
+    links:
+      - db
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.6.2
+    container_name: kibana
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    links:
+      - db
+    depends_on:
+      - elasticsearch
+  logstash:
+    image: docker.elastic.co/logstash/logstash:7.6.2
+    container_name: logstash
+    environment:
+      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    volumes:
+      - ./logstash:/usr/share/logstash/pipeline
+    ports:
+      - "4560:4560"
+    links:
+      - db
+    depends_on:
+      - elasticsearch
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.6.2
+    container_name: elasticsearch
+    environment:
+      - node.name=elasticsearch
+      - cluster.name=es-docker-cluster
+      - discovery.seed_hosts=es02
+      - cluster.initial_master_nodes=elasticsearch,es02
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - 9200:9200
+      - 9300:9300
+    links:
+      - db
+  es02:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.6.2
+    container_name: es02
+    environment:
+      - node.name=es02
+      - cluster.name=es-docker-cluster
+      - discovery.seed_hosts=elasticsearch
+      - cluster.initial_master_nodes=elasticsearch,es02
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    links:
+      - db
+  prometheus:
+    image: "prom/prometheus"
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    container_name: prometheus
+    links:
+      - db
+  grafana:
+    image: "grafana/grafana"
+    ports:
+      - "3000:3000"
+    container_name: grafana
+    links:
+      - db

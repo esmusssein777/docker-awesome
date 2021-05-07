@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="false">
+    <springProperty scope="context" name="appname" source="spring.application.name"/>
+    <springProperty scope="context" name="logstash" source="logstash.host"/>
+
+    <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <destination>${logstash}</destination>
+        <keepAliveDuration>1 minutes</keepAliveDuration>
+        <queueSize>262144</queueSize>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder" >
+            <customFields>{"appname":"${appname}"}</customFields>
+        </encoder>
+    </appender>
+
+    <appender name="consoleLog" class="ch.qos.logback.core.ConsoleAppender">
+        <layout class="ch.qos.logback.classic.PatternLayout">
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %thread %highlight(%-5level) -- %cyan([%logger{30}.%method]\(%line\)) - %msg%n</pattern>
+        </layout>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="LOGSTASH"/>
+        <appender-ref ref="consoleLog"/>
+    </root>
+
+    <springProfile name="default">
+        <appender name="consoleLog" class="ch.qos.logback.core.ConsoleAppender">
+            <layout class="ch.qos.logback.classic.PatternLayout">
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %thread %highlight(%-5level) -- %cyan([%logger{30}.%method]\(%line\)) - %msg%n</pattern>
+            </layout>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="consoleLog"/>
+        </root>
+    </springProfile>
+
+</configuration>
