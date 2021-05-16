@@ -1,0 +1,8 @@
+- job_name: 'docker-awesome-server'
+  scrape_interval: 5s
+  metrics_path: '/actuator/prometheus'
+  kubernetes_sd_configs:
+    - role: endpoints
+  scheme: http
+  static_configs:
+    - targets: ['docker-awesome-server:8080']

@@ -1,0 +1,79 @@
+---
+apiVersion: apps/v1           # API version
+kind: Deployment              # Type of kubernetes resource
+metadata:
+  name: docker-awesome-server    # Name of the kubernetes resource
+  labels:                     # Labels that will be applied to this resource
+    app: docker-awesome-server
+spec:
+  replicas: 1                 # No. of replicas/pods to run in this deployment
+  selector:
+    matchLabels:              # The deployment applies to any pods mayching the specified labels
+      app: docker-awesome-server
+  template:                   # Template for creating the pods in this deployment
+    metadata:
+      labels:                 # Labels that will be applied to each Pod in this deployment
+        app: docker-awesome-server
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:                     # Spec for the containers that will be run in the Pods
+      containers:
+        - name: docker-awesome-server
+          image: esmusssein777/docker-awesome:4.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080 # The port that the container exposes
+          resources:
+            limits:
+              cpu: 0.2
+              memory: "800Mi"
+          env:                  # Environment variables supplied to the Pod
+            - name: SPRING_DATASOURCE_USERNAME # Name of the environment variable
+              valueFrom:          # Get the value of environment variable from kubernetes secrets
+                secretKeyRef:
+                  name: mysql-user-pass
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-user-pass
+                  key: password
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-db-url
+                  key: url
+---
+apiVersion: v1                # API version
+kind: Service                 # Type of the kubernetes resource
+metadata:
+  name: docker-awesome-server    # Name of the kubernetes resource
+  labels:                     # Labels that will be applied to this resource
+    app: docker-awesome-server
+spec:
+  type: NodePort              # The service will be exposed by opening a Port on each node and proxying it.
+  selector:
+    app: docker-awesome-server   # The service exposes Pods with label `app=docker-awesome-server`
+  ports:                      # Forward incoming connections on port 8080 to the target port 8080
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: docker-awesome-server
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: docker-awesome-server
+  endpoints:
+    - port: http # name must equals service port name
+      path: '/actuator/prometheus'
+      interval: 10s
+      honorLabels: true

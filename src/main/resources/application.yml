@@ -12,9 +12,6 @@ spring:
     show-sql: true
     database: mysql
 
-logstash:
-  host: localhost:4560
-
 management:
   health:
     elasticsearch:
