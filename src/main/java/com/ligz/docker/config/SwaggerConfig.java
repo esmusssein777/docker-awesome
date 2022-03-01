@@ -26,7 +26,7 @@ public class SwaggerConfig {
     private ApiInfo apiInfo() {
         return new ApiInfoBuilder()
                 .title("APIs")
-                .description("基于swagger2的restful api")
+                .description("base in swagger2 restful api")
                 .version("1.0")
                 .build();
     }

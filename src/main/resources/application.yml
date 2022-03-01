@@ -1,31 +1,3 @@
 spring:
   application:
     name: docker-awesome
-  datasource:
-    driverClassName: com.mysql.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/docker?characterEncoding=UTF-8&connectionCollation=utf8mb4_bin
-    username: root
-    password: root
-  jpa:
-    hibernate.ddl-auto: create
-    generate-ddl: true
-    show-sql: true
-    database: mysql
-
-management:
-  health:
-    elasticsearch:
-      enabled: false
-  endpoint:
-    metrics:
-      enabled: true
-    prometheus:
-      enabled: true
-  endpoints:
-    web:
-      exposure:
-        include: ["prometheus","health"]
-  metrics:
-    export:
-      prometheus:
-        enabled: true
