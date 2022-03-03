@@ -11,10 +11,18 @@ import java.util.regex.Pattern;
 
 public class LogMasker {
 
-    private final Map<PatternType, Pattern> patternsMap = new HashMap<>();
+    private final static Map<PatternType, Pattern> patternsMap = new HashMap<>();
 
-    public LogMasker() {
+    private LogMasker() {
         loadPatterns();
+    }
+
+    private static class SingletonLogMasker {
+        private static final LogMasker instance = new LogMasker();
+    }
+
+    public static LogMasker getInstance() {
+        return SingletonLogMasker.instance;
     }
 
     private void loadPatterns() {
