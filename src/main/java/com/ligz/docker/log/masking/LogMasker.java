@@ -1,6 +1,7 @@
 package com.ligz.docker.log.masking;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,7 +12,7 @@ import java.util.regex.Pattern;
 
 public class LogMasker {
 
-    private final static Map<PatternType, Pattern> patternsMap = new HashMap<>();
+    private final static Map<Pattern, Pair<String, String>> patternsMap = new HashMap<>();
 
     private LogMasker() {
         loadPatterns();
@@ -28,7 +29,7 @@ public class LogMasker {
     private void loadPatterns() {
         for (PatternType patternType : PatternType.values()) {
             Pattern pattern = Pattern.compile(patternType.regex);
-            patternsMap.put(patternType, pattern);
+            patternsMap.put(pattern, Pair.of(patternType.replaceRegex, patternType.replacement));
         }
     }
 
@@ -36,25 +37,20 @@ public class LogMasker {
         if (StringUtils.isBlank(message)) {
             return message;
         }
-        for (PatternType key : patternsMap.keySet()) {
-            Pattern pattern = patternsMap.get(key);
+        for (Pattern pattern : patternsMap.keySet()) {
+            Pair<String, String> replacePair = patternsMap.get(pattern);
             Matcher matcher = pattern.matcher(message);
-            Set<String> matches = extractMatchesByType(matcher);
+            Set<String> matches = extractMatches(matcher);
             if (!matches.isEmpty()) {
-                message = maskByType(key, message, matches);
+                message = mask(message, matches, replacePair.getLeft(), replacePair.getRight());
             }
         }
         return message;
     }
 
-    private Set<String> extractMatchesByType(Matcher matcher) {
-        return extractDefault(matcher);
-    }
-
-    private Set<String> extractDefault(Matcher matcher) {
+    private Set<String> extractMatches(Matcher matcher) {
         Set<String> matches = new HashSet<>();
         int count = matcher.groupCount();
-
         while (matcher.find()) {
             if (count == 0) {
                 matches.add(matcher.group());
@@ -66,78 +62,33 @@ public class LogMasker {
                     matches.add(match);
                 }
             }
-
         }
-
         return matches;
     }
 
 
-    private String maskByType(PatternType key, String message, Set<String> matchs) {
-        if (key == PatternType.ID_CARD || key == PatternType.PHONE_NUMBER || key == PatternType.BANK_CARD) {
-            return replaceNumber(message, matchs);
-        } else if (key == PatternType.EMAIL) {
-            return replaceMail(message, matchs);
-        } else if (key == PatternType.EMAIL_FOR_HTML_ENCODE) {
-            return replaceHtmlMail(message, matchs);
-        } else {
-            return message;
-        }
-    }
-
-
-    private String replaceNumber(String message, Set<String> matches) {
-
+    private String mask(String message, Set<String> matches, String replaceRegex, String replacement) {
         for (String match : matches) {
-            String matchProcess = maskNumber(match);
+            String matchProcess = match.replaceAll(replaceRegex, replacement);
             message = message.replace(match, matchProcess);
         }
         return message;
     }
-
-    private String replaceMail(String message, Set<String> matches) {
-        for (String match : matches) {
-            String matchProcess = maskMail(match);
-            message = message.replace(match, matchProcess);
-        }
-        return message;
-    }
-
-
-    private String maskNumber(String numberStr) {
-        return numberStr.replaceAll("(?<=\\d{3})(\\d)(?=\\d{4})", "*");
-    }
-
-    private String maskMail(String mailString) {
-        return mailString.replaceAll("(^\\w{3})[^@]*(@.*$)", "$1****$2");
-    }
-
-    private String replaceHtmlMail(String message, Set<String> matches) {
-        for (String match : matches) {
-            String matchProcess = maskHtmlMail(match);
-            message = message.replace(match, matchProcess);
-        }
-        return message;
-    }
-
-    private String maskHtmlMail(String mailString) {
-        return mailString.replaceAll("(^\\w{3})[^&]*(&.*$)", "$1****$2");
-    }
-
 
     private enum PatternType {
-        PHONE_NUMBER("手机号", "(1[3-9]\\d{9})[^\\d]|(^1[3-9]\\d{9}$)"),
-        BANK_CARD("银行卡", "[^\\d](\\d{16})[^\\d]|[^\\d](\\d{19})[^\\d]|(^\\d{16}$)|(^\\d{19}$)"),
-        EMAIL("邮箱", "([A-Za-z_0-9]{1,64}@[A-Za-z1-9_-]+.[A-Za-z]{2,10})"),
-        EMAIL_FOR_HTML_ENCODE("邮箱", "([A-Za-z_0-9]{1,64}&#x40;[A-Za-z1-9_-]+.[A-Za-z]{2,10})"),
-        ID_CARD("身份证", "[^\\d](\\d{15})[^\\d]|[^\\d](\\d{18})[^\\d]|[^\\d](\\d{17}X)|(^\\d{15}$)|(^\\d{18}$)|(^\\d{17}X$)");
+        PHONE_NUMBER("(1[3-9]\\d{9})[^\\d]|(^1[3-9]\\d{9}$)", "(?<=\\d{3})(\\d)(?=\\d{4})", "*"),
+        BANK_CARD("[^\\d](\\d{16})[^\\d]|[^\\d](\\d{19})[^\\d]|(^\\d{16}$)|(^\\d{19}$)", "(?<=\\d{3})(\\d)(?=\\d{4})", "*"),
+        EMAIL("([A-Za-z_0-9]{1,64}@[A-Za-z1-9_-]+.[A-Za-z]{2,10})", "(^\\w{3})[^@]*(@.*$)", "$1****$2"),
+        ID_CARD("[^\\d](\\d{15})[^\\d]|[^\\d](\\d{18})[^\\d]|[^\\d](\\d{17}X)|(^\\d{15}$)|(^\\d{18}$)|(^\\d{17}X$)", "(?<=\\d{3})(\\d)(?=\\d{4})", "*");
 
-        public String description;
-        public String regex;
+        public final String regex;
+        public final String replaceRegex;
+        public final String replacement;
 
-        PatternType(String description, String regex) {
-            this.description = description;
+        PatternType(String regex, String replaceRegex, String replacement) {
             this.regex = regex;
+            this.replaceRegex = replaceRegex;
+            this.replacement = replacement;
         }
 
     }
