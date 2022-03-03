@@ -6,7 +6,7 @@
     <conversionRule conversionWord="safeMessage" converterClass="com.ligz.docker.log.logback.LogInjectionPreventMessageConverter" />
 
     <appender name="consoleLog" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder class="com.ligz.docker.log.masking.MaskingLoggingEventCompositeJsonEncoder">
+        <encoder class="com.ligz.docker.log.logback.MaskingLoggingEventCompositeJsonEncoder">
             <providers>
                 <pattern>
                     <pattern>
